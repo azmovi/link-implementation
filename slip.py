@@ -1,3 +1,6 @@
+from traceback import print_exc
+
+
 class CamadaEnlace:
     ignore_checksum = False
 
@@ -43,22 +46,44 @@ class Enlace:
     def __init__(self, linha_serial):
         self.linha_serial = linha_serial
         self.linha_serial.registrar_recebedor(self.__raw_recv)
+        self.datagrama = b''
+        self.old_byte = b''
 
     def registrar_recebedor(self, callback):
         self.callback = callback
 
     def enviar(self, datagrama):
-        # TODO: Preencha aqui com o código para enviar o datagrama pela linha
-        # serial, fazendo corretamente a delimitação de quadros e o escape de
-        # sequências especiais, de acordo com o protocolo CamadaEnlace (RFC 1055).
-        pass
+        datagrama = datagrama.replace(b'\xdb', b'\xdb\xdd').replace(
+            b'\xc0', b'\xdb\xdc'
+        )
+        self.linha_serial.enviar(b'\xc0' + datagrama + b'\xc0')
 
     def __raw_recv(self, dados):
-        # TODO: Preencha aqui com o código para receber dados da linha serial.
-        # Trate corretamente as sequências de escape. Quando ler um quadro
-        # completo, repasse o datagrama contido nesse quadro para a camada
-        # superior chamando self.callback. Cuidado pois o argumento dados pode
-        # vir quebrado de várias formas diferentes - por exemplo, podem vir
-        # apenas pedaços de um quadro, ou um pedaço de quadro seguido de um
-        # pedaço de outro, ou vários quadros de uma vez só.
-        pass
+        for data in dados:
+            mark = True
+            byte = data.to_bytes(1, byteorder='big')
+
+            if self.old_byte + byte == b'\xdb\xdd':
+                byte = b'\xdb'
+                self.datagrama = self.datagrama[:-1]
+
+            if self.old_byte + byte == b'\xdb\xdc':
+                byte = b'\xc0'
+                self.datagrama = self.datagrama[:-1]
+                self.datagrama += byte
+                mark = False
+
+            if byte != b'\xc0':
+                self.datagrama += byte
+
+            elif self.datagrama and mark:
+                try:
+                    self.callback(self.datagrama)
+                except:
+                    print_exc()
+
+                finally:
+                    self.datagrama = b''
+                    mark = True
+
+            self.old_byte = byte

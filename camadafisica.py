@@ -4,6 +4,7 @@ import fcntl
 import termios
 import asyncio
 
+
 class PTY:
     def __init__(self):
         pty, slave_fd = os.openpty()
@@ -11,16 +12,32 @@ class PTY:
         ispeed = termios.B115200
         ospeed = termios.B115200
         # cfmakeraw
-        iflag &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP |
-                   termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
+        iflag &= ~(
+            termios.IGNBRK
+            | termios.BRKINT
+            | termios.PARMRK
+            | termios.ISTRIP
+            | termios.INLCR
+            | termios.IGNCR
+            | termios.ICRNL
+            | termios.IXON
+        )
         oflag &= ~termios.OPOST
-        lflag &= ~(termios.ECHO | termios.ECHONL | termios.ICANON |
-                   termios.ISIG | termios.IEXTEN)
+        lflag &= ~(
+            termios.ECHO
+            | termios.ECHONL
+            | termios.ICANON
+            | termios.ISIG
+            | termios.IEXTEN
+        )
         cflag &= ~(termios.CSIZE | termios.PARENB)
         cflag |= termios.CS8
         #
-        termios.tcsetattr(pty, termios.TCSANOW, [iflag, oflag, cflag, lflag,
-                                                 ispeed, ospeed, cc])
+        termios.tcsetattr(
+            pty,
+            termios.TCSANOW,
+            [iflag, oflag, cflag, lflag, ispeed, ospeed, cc],
+        )
         fcntl.fcntl(pty, fcntl.F_SETFL, os.O_NONBLOCK)
         pty_name = os.ttyname(slave_fd)
         os.close(slave_fd)
@@ -50,4 +67,3 @@ class PTY:
         Envia dados para a linha serial
         """
         os.write(self.pty, dados)
-
